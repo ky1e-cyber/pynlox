@@ -1,6 +1,6 @@
 import re
 from typing import Tuple, Dict
-from modules.tokens_types import TokenType, Token
+from modules.classes.tokens import TokenType, Token
 
 
 def Tokenizer(source_code: str):
