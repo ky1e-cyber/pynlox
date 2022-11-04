@@ -2,11 +2,10 @@ import os, shutil
 from collections import namedtuple
 from typing import List, Tuple, Dict
 
-AST_TYPES_DIR: str = os.path.join(os.getcwd(), "modules", "ast_types")
-GENERAL_IMPORTS: str = "from abc import ABC\nfrom dataclasses import dataclass\n"
+FILE_PATH = os.path.join(os.getcwd(), "modules", "types", "ast.py")
 
-EXPR_FILE: str = os.path.join(AST_TYPES_DIR, "expr_types.py")
-EXPR_IMPORTS: str = "from tokenizer.token_types import Token\n"
+IMPORTS: str = "from abc import ABC\nfrom dataclasses import dataclass\nfrom tokens import Token\n\n"
+
 EXPR_BASE: str = "Expr"
 EXPR_DESCRIPTION: Dict[str, str] = {
     "ExprBinary"   : f"{EXPR_BASE} left, Token operator, {EXPR_BASE} right",
@@ -15,12 +14,10 @@ EXPR_DESCRIPTION: Dict[str, str] = {
     "ExprUnary"    : f"Token operator, {EXPR_BASE} right"
 }
 
-FILES = (EXPR_FILE, )
-IMPORTS = (EXPR_IMPORTS, )
 BASES = (EXPR_BASE, )
 DESCRIPTIONS = (EXPR_DESCRIPTION, )
 
-assert len(FILES) == len(IMPORTS) == len(BASES) == len(DESCRIPTIONS)
+assert len(BASES) == len(DESCRIPTIONS)
 
 
 TreeClassType = namedtuple("TreeClassType", ["name", "members"])
@@ -37,7 +34,7 @@ def parse_description(description: Dict[str, str]) -> List[TreeClassType]:
 
     return [TreeClassType(*_parse_type(name, members_description)) for name, members_description in description.items()]
 
-def generate_code_str(base_class_name: str, tree_class_types: List[TreeClassType], imports: str) -> str:
+def generate_code_str(base_class_name: str, tree_class_types: List[TreeClassType]) -> str:
     base_class: str = f"class {base_class_name}(ABC):\n    pass\n"
 
     classes: str = "\n".join([
@@ -46,14 +43,15 @@ def generate_code_str(base_class_name: str, tree_class_types: List[TreeClassType
         for t in tree_class_types
     ])
 
-    return "\n".join([GENERAL_IMPORTS, imports, base_class, classes])
+    return "\n".join([base_class, classes])
 
 
 if __name__ == "__main__":
-    if os.path.isdir(AST_TYPES_DIR):
-        shutil.rmtree(AST_TYPES_DIR)
-    os.mkdir(AST_TYPES_DIR)
-
-    for file, imports, base, description in zip(FILES, IMPORTS, BASES, DESCRIPTIONS):
-        with open(file, "w") as f:
-            f.write(generate_code_str(base, parse_description(description), imports))
+    if os.path.isfile(FILE_PATH):
+        os.remove(FILE_PATH)
+    
+    with open(FILE_PATH, "w") as f:
+        f.write(IMPORTS)
+        for base, description in zip(BASES, DESCRIPTIONS):
+            f.write(generate_code_str(base, parse_description(description)))
+    

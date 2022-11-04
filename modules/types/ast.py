@@ -1,7 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-
-from tokenizer.token_types import Token
+from tokens import Token
 
 class Expr(ABC):
     pass
@@ -24,3 +23,4 @@ class ExprLiteral(Expr):
 class ExprUnary(Expr):
     operator: Token
     right: Expr
+    
