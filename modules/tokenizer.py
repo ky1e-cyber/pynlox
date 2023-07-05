@@ -1,7 +1,65 @@
 import re
+from enum import Enum, auto
+from dataclasses import dataclass
 from typing import Tuple, Dict
-from modules.classes.tokens import TokenType, Token
 
+class TokenType(Enum):
+    UNEXPECTED  = auto()
+
+    ## Single-character tokens
+    LEFT_PAREN = auto()
+    RIGHT_PAREN = auto()
+    LEFT_BRACE = auto()
+    RIGHT_BRACE = auto()
+    COMMA = auto()
+    DOT = auto()
+    MINUS = auto()
+    PLUS = auto()
+    SEMICOLON = auto()
+    SLASH = auto()
+    STAR = auto()
+
+    ## One or two character tokens.
+    BANG = auto() 
+    BANG_EQUAL = auto()
+    EQUAL = auto() 
+    EQUAL_EQUAL = auto()
+    GREATER = auto() 
+    GREATER_EQUAL = auto()
+    LESS = auto() 
+    LESS_EQUAL = auto()
+
+    ## Literals
+    IDENTIFIER = auto()
+    STRING = auto()
+    NUMBER = auto()
+
+    ## Keywords
+    AND = auto() 
+    CLASS = auto() 
+    ELSE = auto()
+    FALSE = auto()
+    FUN = auto()
+    FOR = auto()
+    IF = auto()
+    NIL = auto()
+    OR= auto()
+    PRINT = auto()
+    RETURN = auto()
+    SUPER= auto()
+    THIS = auto()
+    TRUE = auto()
+    VAR = auto()
+    WHILE= auto()
+
+    EOF = auto()
+
+@dataclass()
+class Token():
+    token_type: TokenType
+    position: Tuple[int, int]
+    literal: object = None
+    name: object = None
 
 def Tokenizer(source_code: str):
     source_code: Tuple[str, ...] = tuple(source_code.splitlines())
@@ -19,7 +77,7 @@ def Tokenizer(source_code: str):
         "+": TokenType.PLUS,
         ";": TokenType.SEMICOLON,
         "*": TokenType.STAR
-        }
+    }
 
     double_chars_map: Dict[str, Tuple[str, TokenType, TokenType]] = {
         "=": ("=", TokenType.EQUAL, TokenType.EQUAL_EQUAL),
@@ -47,21 +105,21 @@ def Tokenizer(source_code: str):
         "while": TokenType.WHILE 
     }
 
-    def _is_alpha(char: str) -> bool:
+    def is_ascii_alpha(char: str) -> bool:
         assert len(char) == 1, "string with len != 1 in  _is_alpha, one char expected"
         return ord(char) in range(ord('a'), ord('z') + 1) or ord(char) in range(ord('A'), ord('Z') + 1) or char == '_'
 
-    def _is_alphanumeric(char: str) -> bool:
+    def is_ascii_alphanumeric(char: str) -> bool:
         assert len(char) == 1, "string with len != 1 in  _is_alphanumeric, one char expected"
-        return _is_alpha(char) or char.isdigit()
+        return is_ascii_alpha(char) or char.isdigit()
 
-    def _match_start(segment: str, expected: str) -> bool:
+    def match_start(segment: str, expected: str) -> bool:
         return segment.startswith(expected)
 
-    def _match_string(segment: str, terminating_char: str) -> int:
+    def match_string(segment: str, terminating_char: str) -> int:
         return segment.find(terminating_char)
 
-    def _match_multiline_string(segment: Tuple[str, ...], start: int) -> Tuple[int, int]:
+    def match_multiline_string(segment: Tuple[str, ...], start: int) -> Tuple[int, int]:
         pos: int = segment[0].find("'''", start)
         if pos != -1:
             return 0, pos
@@ -72,13 +130,13 @@ def Tokenizer(source_code: str):
 
         return -1, -1
 
-    def _get_multiline_string(segment: Tuple[str, ...], start_pos: int,  end_pos: int) -> str:
+    def get_multiline_string(segment: Tuple[str, ...], start_pos: int,  end_pos: int) -> str:
         if len(segment) == 1:
             return segment[0][start_pos:end_pos:]
 
         return "\n".join((segment[0][start_pos::], ) + segment[1:-1:] + (segment[-1][:end_pos:], ))
 
-    def _match_number(segment: str) -> int:
+    def match_number(segment: str) -> int:
         for pos, char in enumerate(segment):
             if char.isdigit():
                 continue
@@ -91,9 +149,9 @@ def Tokenizer(source_code: str):
         return len(segment)
 
 
-    def _match_identifier(segment: str) -> int:
+    def match_identifier(segment: str) -> int:
         for pos, char in enumerate(segment):
-            if _is_alphanumeric(char):
+            if is_ascii_alphanumeric(char):
                 continue
             return pos
 
@@ -117,7 +175,7 @@ def Tokenizer(source_code: str):
             if char in double_chars_map.keys():
                 expected, type_unmatch, type_match = double_chars_map[char]
 
-                if _match_start(source_code[line_number][pos + 1::], expected):
+                if match_start(source_code[line_number][pos + 1::], expected):
                     yield Token(type_match, (line_number + 1, pos))
 
                     line_start = pos + len(expected) + 1
@@ -128,8 +186,8 @@ def Tokenizer(source_code: str):
                     continue
             
             if char in {"'", '"'}:
-                if _match_start(source_code[line_number][pos::], "'''"):
-                    end_line_offset, end_pos = _match_multiline_string(source_code[line_number::], pos + 3)
+                if match_start(source_code[line_number][pos::], "'''"):
+                    end_line_offset, end_pos = match_multiline_string(source_code[line_number::], pos + 3)
 
                     if end_line_offset == -1:
                         yield Token(TokenType.UNEXPECTED, (line_number + 1, pos))
@@ -138,7 +196,7 @@ def Tokenizer(source_code: str):
                     yield Token(
                         TokenType.STRING, 
                         (line_number + 1, pos),
-                        literal = _get_multiline_string(
+                        literal = get_multiline_string(
                             source_code[line_number:line_number + end_line_offset + 1:],
                             pos + 3, 
                             end_pos
@@ -149,7 +207,7 @@ def Tokenizer(source_code: str):
                     line_number = line_number + end_line_offset - 1
 
                 else:
-                    end_pos = _match_string(source_code[line_number][pos + 1::], char)
+                    end_pos = match_string(source_code[line_number][pos + 1::], char)
 
                     if end_pos == -1:
                         yield Token(TokenType.UNEXPECTED, (line_number + 1, pos))
@@ -162,7 +220,7 @@ def Tokenizer(source_code: str):
 
 
             if char.isdigit():
-                end_pos = pos + _match_number(source_code[line_number][pos + 1::])
+                end_pos = pos + match_number(source_code[line_number][pos + 1::])
 
                 yield Token(
                     TokenType.NUMBER, 
@@ -175,8 +233,8 @@ def Tokenizer(source_code: str):
 
                 break
             
-            if _is_alpha(char):
-                end_pos = pos + _match_identifier(source_code[line_number][pos + 1::])
+            if is_ascii_alpha(char):
+                end_pos = pos + match_identifier(source_code[line_number][pos + 1::])
                 name: str = source_code[line_number][pos:end_pos + 1:]
                 token_type: TokenType = keywords_map.get(name, TokenType.IDENTIFIER)
 
